@@ -2,7 +2,8 @@ use anyhow::Result;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
-
+use std::iter::zip;
+use std::collections::HashMap;
 // Todo:
 // Build word dictionary
 // create game loop and mechanics
@@ -17,8 +18,8 @@ use std::fs::File;
 
 
 struct Radix {
-    chars: &str,
-    children: HashMap<&str, RadixNode>,
+    chars: String,
+    children: HashMap<char, Radix>,
     is_word: bool,
 }
 
@@ -56,47 +57,50 @@ The word is guaranteed to fit there, as we are "building" the word as we look up
 
 
 
-fn insert(&self, root: &RadixNode, insertion_word: &str) -> Result<()> {
-    let next_node = root.children.get(word[..1]);
+fn insert(root: Radix, insertion_word: &str) -> Result<()> {
+    let next_node: Option<&Radix> = root.children.get(&insertion_word.chars().next().unwrap());
     match next_node {
+        None => {
+            // no match, insert node
+            Ok(())
+        },
         Some(child) => {
             if insertion_word == child.chars {
-                println!("Word: {word} already exists in tree");
-                ()
+                println!("Word: {insertion_word} already exists in tree");
+                return Ok(());
             }
-            let common_prefix = zip(child.chars, insertion_word)
+            let common_prefix: &str = zip(child.chars.chars(), insertion_word.chars())
                 .take_while(|(a,b)| a == b)
-                .map(|(a,_) a)
-                .collect()::<_>;
+                .map(|(a,_)| a)
+                .collect();
             
             if common_prefix.len() < insertion_word.len() && common_prefix.len() < child.chars.len() {
                 // child must be split to be the common prefix of both words.
                 // the children of child must be set to the children of the node that will contain the suffix of child
+                let insertion_word_child = Radix {chars: insertion_word[common_prefix.len()..], children: HashMap::new(), is_word: true};
+                let new_child = Radix {chars: child.chars[common_prefix.len()..], children: child.children, is_word: child.is_word};
 
+                let new_parent = Radix {chars: common_prefix, children: HashMap::from([(new_child[..1], new_child), (insertion_word_child[..1], insertion_word_child)])};                
+
+                ()
             }
 
+            // alternatively insertion_word.len() == common_prefix.len()
             if insertion_word.len() < child.chars.len() {
                 // insert insertion_word as a parent of current_word
-                Radix {chars: common_prefix}
+                let new_child = Radix {chars: child.chars[common_prefix.len()..], children: child.children, is_word: child.is_word};
+                let parent = Radix {chars: common_prefix, children: HashMap::from([(new_child.chars[..1], new_child)]), is_word: true};
+                let _ = root.children.insert(insertion_word[..1], new_child);
+                ()
             }
             else {
                 // Search further
-                return insert(&child, insertion_word[common_prefix.len()..])
+                insert(&child, insertion_word[common_prefix.len()..])
+                ()
             }
-
-struct Radix {
-    chars: &str,
-    children: HashMap<&str, RadixNode>,
-    is_word: bool,
-}   
-
-
-
+            ()
 
         },
-        None => {
-            //No match on first character, insert child
-        }
     }
 }
 
