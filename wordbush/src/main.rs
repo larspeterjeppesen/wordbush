@@ -23,6 +23,17 @@ struct Radix {
     is_word: bool,
 }
 
+impl Radix {
+    fn new() -> Radix {
+        Radix {
+            chars: String::from(""),
+            children: HashMap::new(),
+            is_word: false,
+        }
+    }
+}
+
+
 fn lookup(root: &Radix, key: String) -> Result<(), &str> {
     let lower_key = key.to_lowercase();
     let common_prefix: String = zip(root.chars.chars(), lower_key.chars())
@@ -100,7 +111,7 @@ fn insert(root: &mut Radix, insertion_word: String) -> Result<()> {
             if insertion_word.len() < child.chars.len() {
                 // insert insertion_word as a parent of current_word
                 let new_child = Radix {
-                    chars: child.chars.chars().take(common_prefix.len()).collect(), 
+                    chars: child.chars.chars().skip(common_prefix.len()).collect(), 
                     children: child.children.clone(), 
                     is_word: child.is_word};
                 let parent = Radix {
@@ -127,45 +138,211 @@ fn insert(root: &mut Radix, insertion_word: String) -> Result<()> {
 fn main() -> Result<()> {
     let f = File::open("data/words_alpha.txt")?;
     let mut reader = BufReader::new(f);
-    let mut line = String::new();
+    // let mut line = String::new();
 
-    let mut radix_root = Radix {
-        chars: String::from(""),
-        children: HashMap::new(), 
-        is_word: false,
-    };
-    println!("Empty tree:\n{:?}", radix_root);
+    let mut root = Radix::new();
 
-    println!("Insertion word hejsa");
-    let res = insert(&mut radix_root, String::from("hejsa"));
-    println!("insert res: {:?}", res);
-    println!("tree:\n{:?}", radix_root);
-
-    println!("Looking up word hejsa");
-    let res = lookup(&radix_root, String::from("hejsa"));
-    println!("lookup res: {:?}", res);
-
-    println!("Looking up word hej");
-    let res = lookup(&radix_root, String::from("hej"));
-    println!("lookup res: {:?}", res);
-
-    println!("Inserting word hej");
-    let res = insert(&mut radix_root, String::from("hej"));
-    println!("insert res: {:?}", res);
-    println!("tree:\n{:?}", radix_root);
+    let mut i = 0;
+    let max = 370105;
+    loop {
+        let mut line = String::new();
+        let len = reader.read_line(&mut line)?;
+        if len == 0 || i == max {
+            break;
+        }
+        let word: String = line.chars().take(line.len()-2).collect();
+        println!("{word}");
+        let _ = insert(&mut root, word);
 
 
-
-
-    // let mut i = 0;
-    // let max = 370105;
-    // loop {
-    //     let len = reader.read_line(&mut line)?;
-    //     if len == 0 || i == max {
-    //         break;
-    //     }
-    //     println!("{line}");
-    //     i += 1;
-    // }
+        i += 1;
+        if i > 10 {
+            break;
+        }
+    }
+    println!("{root:?}");
     Ok(())
+}
+
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tree_insert_one_word() {
+        let mut root = Radix {
+            chars: String::from(""),
+            children: HashMap::new(),
+            is_word: false,
+        };
+
+        let _ = insert(&mut root, String::from("hej"));
+        let child: Option<&Radix> = root.children.get(&'h');
+        assert_eq!(child.is_some_and(|w| w.chars == "hej"), true);        
+    }
+
+    #[test]
+    fn tree_insert_parent_then_child() {
+        let mut root = Radix::new();
+
+        let _ = insert(&mut root, String::from("hej"));
+        let _ = insert(&mut root, String::from("hejsa"));
+
+
+        let first_child: Option<&Radix> = root.children.get(&'h');
+        assert_eq!(
+            first_child.is_some_and(|node| node.chars == "hej"), 
+            true,        
+            "Failed with tree structure: {root:?}"
+        );
+        
+        let second_child: Option<&Radix> = first_child.unwrap().children.get(&'s');
+        assert_eq!(
+            second_child.is_some_and(|node| node.chars == String::from("sa")), 
+            true,
+            "Failed with tree structure: {root:?}"
+        );
+    }
+
+    #[test]
+    fn tree_insert_child_then_parent() {
+        let mut root = Radix::new();
+
+        let _ = insert(&mut root, String::from("hejsa"));
+        let _ = insert(&mut root, String::from("hej"));
+
+        let first_child: Option<&Radix> = root.children.get(&'h');
+        assert_eq!(
+            first_child.is_some_and(|node| node.chars == "hej"), 
+            true,
+            "Failed with tree structure: {root:?}"
+        );        
+        
+        let second_child: Option<&Radix> = first_child.unwrap().children.get(&'s');
+        assert_eq!(
+            second_child.is_some_and(|node| node.chars == String::from("sa")), 
+            true,
+            "Failed with tree structure: {root:?}"
+        );
+    }
+
+    #[test]
+    fn tree_split_common_prefix_into_parent() {
+        let mut root = Radix::new();
+
+        let _ = insert(&mut root, String::from("hejsa"));
+        let _ = insert(&mut root, String::from("hejse"));
+        
+        let level_one_child: Option<&Radix> = root.children.get(&'h');
+        assert_eq!(
+            level_one_child.is_some_and(|node| node.chars == String::from("hejs")), 
+            true,
+            "Failed with tree structure: {root:?}"
+        );
+
+        let level_one_child = level_one_child.unwrap();
+        assert_eq!(
+            level_one_child.is_word,
+            false,
+            "Failed with tree structure: {root:?}"
+        );
+
+        let level_two_child_one: Option<&Radix> = level_one_child.children.get(&'a');
+        assert_eq!(
+            level_two_child_one.is_some_and(|node| node.chars == String::from("a")), 
+            true,
+            "Failed with tree structure: {root:?}"
+        );
+
+        let level_two_child_two: Option<&Radix> = level_one_child.children.get(&'e');
+        assert_eq!(
+            level_two_child_two.is_some_and(|node| node.chars == String::from('e')), 
+            true,
+            "Failed with tree structure: {root:?}"
+        );
+    }
+
+
+    #[test]
+    fn tree_mark_existing_node_as_word() {
+        let mut root = Radix::new();
+
+        let _ = insert(&mut root, String::from("hejsa"));
+        let _ = insert(&mut root, String::from("hejse"));
+        let _ = insert(&mut root, String::from("hejs"));
+
+        let level_one_child: Option<&Radix> = root.children.get(&'h');
+        assert_eq!(
+            level_one_child.is_some_and(|node| node.is_word == true), 
+            true,
+            "Failed with tree structure: {root:?}"
+        );
+    }
+    
+
+    // Lookup tests
+    // These all assume that the above insertion tests are passing
+
+    #[test]
+    fn tree_lookup_positive() {
+        let mut root = Radix::new();
+
+        let _ = insert(&mut root, String::from("hej"));
+        let res = lookup(&root, String::from("hej"));
+        assert_eq!(
+            res,
+            Ok(()),
+            "Failed with tree structure: {root:?}"
+        );
+    }
+
+    #[test]
+    fn tree_lookup_negative() {
+        let mut root = Radix::new();
+        
+        let _ = insert(&mut root, String::from("hej"));
+        let res = lookup(&root, String::from("hehe"));
+        assert_eq!(
+            res,
+            Err("Key not found in tree"),
+            "Failed with tree structure: {root:?}",
+        )
+    }
+
+
+
+    fn tree_lookup_comprehensive() {
+        let f = File::open("data/words_alpha.txt").unwrap_or(panic!("Could not locate word database"));
+        let mut reader = BufReader::new(f);
+        // let mut line = String::new();
+
+        let mut root = Radix::new();
+
+        let mut i = 0;
+        let max = 370105;
+        loop {
+            let mut line = String::new();
+            let len = reader.read_line(&mut line).unwrap();
+            if len == 0 || i == max {
+                break;
+            }
+            let word: String = line.chars().take(line.len()-2).collect();
+            println!("{word}");
+            let _ = insert(&mut root, word);
+
+            if i == max {
+                break;
+            }
+        }
+
+
+
+
+    }
+
+
 }
