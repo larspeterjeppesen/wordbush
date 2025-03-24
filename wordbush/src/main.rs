@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::SeekFrom;
+use std::io;
 use std::fs::File;
 use std::iter::zip;
 use std::collections::HashMap;
@@ -35,7 +36,7 @@ impl Radix {
 }
 
 
-fn lookup(root: &Radix, key: String) -> Result<(), &str> {
+fn lookup<'a>(root: &'a Radix, key: &String) -> Result<(), &'a str> {
     let lower_key = key.to_lowercase();
     let common_prefix: String = zip(root.chars.chars(), lower_key.chars())
         .take_while(|(a,b)| a == b)
@@ -59,7 +60,7 @@ fn lookup(root: &Radix, key: String) -> Result<(), &str> {
     let subkey = lower_key[common_prefix.len()..].to_string();
     let child_node_match = root.children.get(&subkey.chars().next().unwrap());
     match child_node_match {
-        Some(child) => lookup(child, subkey),
+        Some(child) => lookup(child, &subkey),
         None => return Err("Key not found in tree"),
     }
 }
@@ -135,7 +136,7 @@ fn insert(root: &mut Radix, insertion_word: String) -> Result<()> {
 }
 
 
-fn build_word_radix(path: &str) -> Result<()> {
+fn build_word_radix(path: &str) -> Result<Radix> {
     let f = File::open(path)?;
     let mut reader = BufReader::new(f);
     // let mut line = String::new();
@@ -162,14 +163,62 @@ fn build_word_radix(path: &str) -> Result<()> {
         }
     }
     println!("Loaded {i} words");
-    Ok(())
+    Ok(root)
 
 }
 
 
 fn main() -> Result<()> {
     let path: &str = "data/words_alpha.txt";
-    let word_radix_root = build_word_radix(path);
+    let mut word_radix_root = build_word_radix(path)?;
+
+
+    // loop where a word is first selected by the player, then we iterate through each character in the word, asking for words for each character.
+    // When a word for the last word is typed, that word should become the word to iterate through for the next round
+
+    let mut primary_word_buffer = String::new();
+    let stdin: io::Stdin = io::stdin();
+
+    println!("Input a word to start:");
+    loop {
+        primary_word_buffer.clear();
+        let _ = stdin.read_line(&mut primary_word_buffer);
+        let _ = primary_word_buffer.pop();
+        let res = lookup(&mut word_radix_root, &primary_word_buffer);
+        match res {
+            Ok(()) => break,
+            Err(_) => println!("Input is not a word, please try again."),
+        } 
+    }
+
+    let mut character_word_buffer = String::new();
+
+    loop {
+        println!("Your word is {primary_word_buffer}");
+        let mut word_char_iter = primary_word_buffer.chars();
+        while let Some(c) = word_char_iter.next() {
+            println!("{c}");
+
+            character_word_buffer.clear();
+            let _ = stdin.read_line(&mut character_word_buffer);
+            let _ = character_word_buffer.pop();
+
+            if character_word_buffer.chars().next().unwrap() != c {
+                println!("You word needs to start with the same letter as your current character. You lose!");
+                return Ok(());
+            }
+
+            let res = lookup(&mut word_radix_root, &character_word_buffer);
+            if let Err(_) = res {
+                println!("input is not a word, you lose!"); 
+                return Ok(());
+            }
+        }
+        
+        primary_word_buffer = character_word_buffer.clone();
+
+    }
+
 
 
     Ok(())
