@@ -1,6 +1,7 @@
 use anyhow::Result;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::SeekFrom;
 use std::fs::File;
 use std::iter::zip;
 use std::collections::HashMap;
@@ -134,16 +135,16 @@ fn insert(root: &mut Radix, insertion_word: String) -> Result<()> {
 }
 
 
-
-fn main() -> Result<()> {
-    let f = File::open("data/words_alpha.txt")?;
+fn build_word_radix(path: &str) -> Result<()> {
+    let f = File::open(path)?;
     let mut reader = BufReader::new(f);
     // let mut line = String::new();
 
     let mut root = Radix::new();
 
     let mut i = 0;
-    let max = 370105;
+    // let max = 370105;
+    let max = 10i32.pow(6);
     loop {
         let mut line = String::new();
         let len = reader.read_line(&mut line)?;
@@ -151,16 +152,26 @@ fn main() -> Result<()> {
             break;
         }
         let word: String = line.chars().take(line.len()-2).collect();
-        println!("{word}");
+        // println!("{word}");
         let _ = insert(&mut root, word);
 
 
         i += 1;
-        if i > 10 {
+        if i == max {
             break;
         }
     }
-    println!("{root:?}");
+    println!("Loaded {i} words");
+    Ok(())
+
+}
+
+
+fn main() -> Result<()> {
+    let path: &str = "data/words_alpha.txt";
+    let word_radix_root = build_word_radix(path);
+
+
     Ok(())
 }
 
@@ -314,9 +325,9 @@ mod tests {
     }
 
 
-
-    fn tree_lookup_comprehensive() {
-        let f = File::open("data/words_alpha.txt").unwrap_or(panic!("Could not locate word database"));
+    #[test]
+    fn tree_insert_lookup_whole_db() {
+        let f = File::open("/home/lars/Git/wordbush/wordbush/data/words_alpha.txt").unwrap_or_else(|_| panic!("Could not locate word database"));
         let mut reader = BufReader::new(f);
         // let mut line = String::new();
 
@@ -331,7 +342,6 @@ mod tests {
                 break;
             }
             let word: String = line.chars().take(line.len()-2).collect();
-            println!("{word}");
             let _ = insert(&mut root, word);
 
             if i == max {
@@ -339,9 +349,25 @@ mod tests {
             }
         }
 
+        reader.seek(SeekFrom::Start(0)).unwrap();
 
+        i = 0;
+        loop {
+            let mut line = String::new();
+            let len = reader.read_line(&mut line).unwrap();
+            if len == 0 || i == max {
+                break;
+            }
+            let word: String = line.chars().take(line.len()-2).collect();
+            // println!("{word}");
+            let res = lookup(&root, word);
 
+            assert_eq!(res, Ok(()));
 
+            if i == max {
+                break;
+            }
+        }
     }
 
 
