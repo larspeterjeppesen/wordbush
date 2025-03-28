@@ -1,11 +1,24 @@
 mod radix;
 use anyhow::Result;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::io;
-use std::fs::File;
+use std::{
+    io::{
+        prelude::*,
+        BufReader,
+        Stdin,
+        stdin
+    },
+    fs::File,
+    net::{TcpListener, TcpStream},
+    thread,
+};
+// use std::io::prelude::*;
+// use std::io::BufReader;
+// use std::io;
+// use std::fs::File;
 use crate::radix::{Radix, insert, lookup};
 
+const MAX_WORD_SIZE_U8: usize = 128;
+const MAX_WORD_SIZE_CHAR: usize = MAX_WORD_SIZE_U8 / 4;
 
 fn build_word_radix(path: &str) -> Result<Radix> {
     let f = File::open(path)?;
@@ -38,22 +51,34 @@ fn build_word_radix(path: &str) -> Result<Radix> {
 
 }
 
-fn run() -> Result<()> {
-    Ok(())
+struct GameData {
+    word: [char; 64],
 }
 
+impl GameData {
+    /// Return a GameData struct with field word initialized as all null bytes
+    fn new() -> GameData {
+        GameData { word: ['\0'; 64] }
+    }
+}
 
-fn main() -> Result<()> {
-    let path: &str = "data/words_alpha.txt";
-    let mut word_radix = build_word_radix(path)?;
+fn run_game_instance(word_radix: &Radix, mut stream: TcpStream) -> Result<()> {
+    let mut buf_reader = BufReader::new(&stream);
+
+    let mut data: [u8; MAX_WORD_SIZE_U8] = [0; MAX_WORD_SIZE_U8];
+    buf_reader.read_exact(&mut data);    
+    let word: [char; MAX_WORD_SIZE_CHAR] = data
+        .as_slice()
+        .chunks_exact(4)
+        .map(|bytes| char::from_u32((&raw const bytes) as u32).unwrap())
+        .collect();
 
 
-    // loop where a word is first selected by the player, then we iterate through each character in the word, asking for words for each character.
-    // When a word for the last word is typed, that word should become the word to iterate through for the next round
+
+
 
     let mut primary_word_buffer = String::new();
-    let stdin: io::Stdin = io::stdin();
-
+    let stdin: Stdin = stdin();
 
     println!("Input a word to start:");
     loop {
@@ -61,7 +86,7 @@ fn main() -> Result<()> {
         let _ = stdin.read_line(&mut primary_word_buffer);
         let _ = primary_word_buffer.pop(); // Remove newline
 
-        match lookup(&mut word_radix, &primary_word_buffer) {
+        match lookup(word_radix, &primary_word_buffer) {
             Ok(()) => break,
             Err(_) => println!("Input is not a word, please try again."),
         } 
@@ -130,7 +155,29 @@ fn main() -> Result<()> {
     }
 
 
+}
 
-    // Ok(())
+
+fn run(mut word_radix: Radix) -> Result<()> {    
+
+    Ok(())
+}
+
+
+fn main() -> Result<()> {
+    // Initialize word db
+    let path: &str = "data/words_alpha.txt";
+    let mut word_radix = build_word_radix(path)?;
+
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+
+    for stream in listener.incoming().take(2) {
+        let stream = stream.unwrap();
+
+        run_game_instance(&word_radix, stream);
+    } 
+
+
+    Ok(())
 }
 
