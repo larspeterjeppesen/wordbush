@@ -1,13 +1,15 @@
 mod radix;
+mod protocol;
 use std::{
-    fmt,
-    // error::Error, 
+    arch::x86_64, 
+    fmt, 
     fs::File, 
     io::{self, prelude::*, BufReader, BufWriter}, 
-    net::{TcpListener, TcpStream}, thread
+    net::{self, TcpListener, TcpStream}, str, thread
 };
 
 use crate::radix::Radix;
+
 
 fn build_word_radix(path: &str) -> Result<Radix, Box<dyn std::error::Error>> {
     let f = File::open(path)?;
@@ -52,28 +54,32 @@ impl std::fmt::Display for WriteError{
 impl std::error::Error for WriteError {}
 
 
-fn run_game_instance(word_radix: &Radix, stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
+fn run_game_instance(word_radix: &Radix, mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
     let mut word_buf = String::new();
-    let mut buf_writer_client_stream = BufWriter::new(&stream);
-    let mut buf_reader_client_stream = BufReader::new(&stream);
-    buf_reader_client_stream.read_to_string(&mut word_buf)?;
+    let mut read_buf: [u8; 128] = [0; 128]; 
+    println!("Waiting for client input");
+    // loop {
+        // let message: Message = Message::from(&mut stream);
 
-    loop {
-        match word_radix.lookup(&word_buf) {
-            Ok(()) => break,
-            Err(_) => {
-                let response = "Input is not recognized as a word, please try again.";
-                let bytes_written: usize = buf_writer_client_stream.write(response.as_bytes())?;
-                if bytes_written != response.as_bytes().len() {
-                    println!("Failed to write response at line: {}", line!());
-                    return Err(Box::new(WriteError)); 
-                }
-            }
-        }
-    }
+        stream.read_exact(&mut read_buf);
+        let word_buf = String::from_utf8(Vec::from(read_buf)).unwrap();
+        // println!("Received word: {word_buf}");
 
+        // match word_radix.lookup(&word_buf) {
+        //     Ok(()) => break,
+        //     Err(_) => {
+        //         let response = "Input is not recognized as a word, please try again.";
+        //         let bytes_written: usize = buf_client_writer.write(response.as_bytes())?;
+        //         if bytes_written != response.as_bytes().len() {
+        //             println!("Failed to write response at line: {}", line!());
+        //             return Err(Box::new(WriteError)); 
+        //         }
+        //     }
+        // }
+    // }
 
-
+    // let res = buf_client_writer.into_inner().unwrap().shutdown(net::Shutdown::Both);
+    // println!("Shutdown result: {res:?}");
     Ok(())
 }
 
@@ -179,6 +185,7 @@ fn run_game_instance(word_radix: &Radix, stream: TcpStream) -> Result<(), Box<dy
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize word db
+    // let n: [u8; 4] = n.to_be_bytes();
     let path: &str = "data/words_alpha.txt";
     let word_radix = build_word_radix(path)?;
 
