@@ -1,6 +1,6 @@
 use std::{
     net::TcpStream, 
-    io::Read
+    io::{Read, Write}
 };
 
 fn u8_to_u32(arr: [u8; 4]) -> u32 {
@@ -19,12 +19,21 @@ fn u32_to_u8(n: u32) -> [u8; 4] {
     arr
 }
 
+#[derive(Debug)]
 pub struct Message {
     content_len: u32,
     content: String,
 }
 
 impl Message {
+    pub fn build(content: String) -> Message {
+        let content_len: u32 = content.as_bytes().len() as u32;
+        Message {
+            content_len,
+            content
+        }
+    }
+
     pub fn from_stream(mut stream: TcpStream) -> Result<Message, Box<dyn std::error::Error>> {
         let mut content_len_buf: [u8; 4] = [0; 4];
         stream.read_exact(&mut content_len_buf)?;
@@ -36,6 +45,16 @@ impl Message {
             content: content_buf,
         };
         Ok(message)
+    }
+
+    pub fn send_contents_to_stream(self, mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
+        let data: Vec<u8> = u32_to_u8(self.content_len)
+            .iter()
+            .chain(self.content.as_bytes().iter())
+            .map(|b| *b)
+            .collect::<Vec<u8>>();
+        stream.write(&data[..])?;
+        Ok(())
     }
 }
 

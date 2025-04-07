@@ -1,4 +1,4 @@
-use anyhow::Result;
+// use anyhow::Result;
 use std::iter::zip;
 use std::collections::HashMap;
 
@@ -48,7 +48,7 @@ impl Radix {
         }
     }
 
-    pub fn insert(&mut self, insertion_word: String) -> Result<()> {
+    pub fn insert(&mut self, insertion_word: String) -> Result<(), Box<dyn std::error::Error>> {
         let next_node: Option<&mut Radix> = self.children.get_mut(&insertion_word.chars().next().unwrap());
         match next_node {
             None => {
