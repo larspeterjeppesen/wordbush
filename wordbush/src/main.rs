@@ -1,5 +1,4 @@
 mod radix;
-mod protocol;
 use std::{
     arch::x86_64, 
     fmt, 
@@ -7,7 +6,7 @@ use std::{
     io::{self, prelude::*, BufReader, BufWriter}, 
     net::{self, TcpListener, TcpStream}, str, thread
 };
-
+use protocol::Message;
 use crate::radix::Radix;
 use crate::protocol::Message;
 
@@ -42,28 +41,34 @@ fn build_word_radix(path: &str) -> Result<Radix, Box<dyn std::error::Error>> {
 
 }
 
-#[derive(Debug)]
-struct WriteError;
+// #[derive(Debug)]
+// struct WriteError;
 
-impl std::fmt::Display for WriteError{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Could not write entire response to client")
-    }
-}
+// impl std::fmt::Display for WriteError{
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "Could not write entire response to client")
+//     }
+// }
 
-impl std::error::Error for WriteError {}
+// impl std::error::Error for WriteError {}
 
 
 fn run_game_instance(word_radix: &Radix, mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
     let mut word_buf = String::new();
     let mut read_buf: [u8; 128] = [0; 128]; 
     println!("Waiting for client input");
+    let message: Message = Message::from_stream(&stream)?;
+    println!("{:?}", message);
     // loop {
         // let message: Message = Message::from(&mut stream);
 
+<<<<<<< HEAD
         // stream.read_exact(&mut read_buf)?;
     let message = Message::from_stream(stream);
     println!("{message:?}");
+=======
+        // stream.read_exact(&mut read_buf);
+>>>>>>> 0ed361d (all work pushed to work on laptop)
         // let word_buf = String::from_utf8(Vec::from(read_buf)).unwrap();
         // println!("Received word: {word_buf}");
 

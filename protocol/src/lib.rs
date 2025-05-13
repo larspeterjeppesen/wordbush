@@ -38,7 +38,7 @@ impl Message {
         Ok(message)
     }
 
-    pub fn send_message(mut stream: TcpStream, content: &String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn send_message(mut stream: &TcpStream, content: &String) -> Result<(), Box<dyn std::error::Error>> {
         let content_len = content.len() as u32;
         match content_len {
             0 => return Err(Box::<dyn std::error::Error>::from("cannot send empty message")),
@@ -54,15 +54,14 @@ impl Message {
                     .iter())
             .map(|b| *b)
             .collect::<Vec<u8>>();
-        println!("{:?}", message_bytes);
         let n = stream.write(&message_bytes)?;
-        println!("bytes written: {:?}", n);
         Ok(())
     }
 
-    pub fn from_stream(mut stream: TcpStream) -> Result<Message, Box<dyn std::error::Error>> {
+    pub fn from_stream(mut stream: &TcpStream) -> Result<Message, Box<dyn std::error::Error>> {
         let mut content_len_buf: [u8; 4] = [0; 4];
         stream.read_exact(&mut content_len_buf)?;
+<<<<<<< HEAD
 
         println!("len buf: {:?}", content_len_buf);
         let content_len: u32 = u8_to_u32(content_len_buf);
@@ -70,9 +69,31 @@ impl Message {
 
         let mut content_buf = String::new();
         stream.take(content_len as u64).read_to_string(&mut content_buf)?;
+=======
+        let content_len: u32 = u8_to_u32(content_len_buf);
+        // let mut content_buf = String::new();
+        let mut content_buf: Vec<u8> = Vec::with_capacity(content_len as usize);
+        stream.read_exact(&mut content_buf);
+
+        let mut u32_data: Vec<u32> = vec![0_u32; content_buf.len()/4];
+        // let mut u8_ref = unsafe {
+        //     std::slice::from_raw_partsu32_data.as_mut_ptr().cast::<u8>();
+        // }
+        let u8_ref: &mut [u8] = unsafe{
+            std::slice::from_raw_parts_mut(u32_data.as_mut_ptr() as *mut u8, 
+            content_buf.len())};
+        // std::slice::copy_from_slice(u8_data, raw_data);
+        u8_ref.copy_from_slice(&content_buf);
+
+        let content: String = u32_data
+            .iter()
+            .map(|x| x.to_string())
+            .collect();
+        // stream.take(content_len as u64).read_to_string(&mut content_buf)?;
+>>>>>>> 0ed361d (all work pushed to work on laptop)
         let message = Message {
             content_len,
-            content: content_buf,
+            content: content,
         };
         Ok(message)
     }
@@ -108,12 +129,11 @@ mod tests {
         let listener = tcp_listener.incoming();
         let sender_stream = TcpStream::connect(addr).unwrap();
         let receiver_stream = listener.take(1).next().unwrap().unwrap();
-        // let receiver_stream = stream_result.unwrap().unwrap();
 
-        let res = Message::send_message(sender_stream, &String::from("test message"));
+        let res = Message::send_message(&sender_stream, &String::from("test message"));
         assert!(res.is_ok_and(|x| x == ()));
 
-        let received_message: Message = Message::from_stream(receiver_stream).unwrap();
+        let received_message: Message = Message::from_stream(&receiver_stream).unwrap();
         let test_message = Message::build(&String::from("test message")).unwrap();
         assert_eq!(received_message, test_message);
     }
