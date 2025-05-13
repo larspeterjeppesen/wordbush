@@ -8,7 +8,6 @@ use std::{
 };
 use protocol::Message;
 use crate::radix::Radix;
-use crate::protocol::Message;
 
 fn build_word_radix(path: &str) -> Result<Radix, Box<dyn std::error::Error>> {
     let f = File::open(path)?;
@@ -62,13 +61,10 @@ fn run_game_instance(word_radix: &Radix, mut stream: TcpStream) -> Result<(), Bo
     // loop {
         // let message: Message = Message::from(&mut stream);
 
-<<<<<<< HEAD
         // stream.read_exact(&mut read_buf)?;
-    let message = Message::from_stream(stream);
-    println!("{message:?}");
-=======
+    // let message = Message::from_stream(stream);
+    // println!("{message:?}");
         // stream.read_exact(&mut read_buf);
->>>>>>> 0ed361d (all work pushed to work on laptop)
         // let word_buf = String::from_utf8(Vec::from(read_buf)).unwrap();
         // println!("Received word: {word_buf}");
 

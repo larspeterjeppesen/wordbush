@@ -3,10 +3,6 @@ name = "wordbush"
 version = "0.1.0"
 edition = "2021"
 
-<<<<<<< HEAD
-=======
 [dependencies]
 protocol = { path = "../protocol"}
 anyhow = "1.0.96"
-
->>>>>>> 0ed361d (all work pushed to work on laptop)
