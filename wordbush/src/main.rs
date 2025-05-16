@@ -6,7 +6,7 @@ use std::{
     io::{self, prelude::*, BufReader, BufWriter}, 
     net::{self, TcpListener, TcpStream}, str, thread
 };
-use protocol::Message;
+use protocol;
 use crate::radix::Radix;
 
 fn build_word_radix(path: &str) -> Result<Radix, Box<dyn std::error::Error>> {
@@ -53,33 +53,26 @@ fn build_word_radix(path: &str) -> Result<Radix, Box<dyn std::error::Error>> {
 
 
 fn run_game_instance(word_radix: &Radix, mut stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
-    let mut word_buf = String::new();
-    let mut read_buf: [u8; 128] = [0; 128]; 
+    protocol::write_string_to_stream(&stream, &String::from("Welcome to wordbush version 0.1!\nType a word to begin!"))?;
     println!("Waiting for client input");
-    let message: Message = Message::from_stream(&stream)?;
-    println!("{:?}", message);
-    // loop {
-        // let message: Message = Message::from(&mut stream);
 
-        // stream.read_exact(&mut read_buf)?;
-    // let message = Message::from_stream(stream);
-    // println!("{message:?}");
-        // stream.read_exact(&mut read_buf);
-        // let word_buf = String::from_utf8(Vec::from(read_buf)).unwrap();
-        // println!("Received word: {word_buf}");
 
-        // match word_radix.lookup(&word_buf) {
-        //     Ok(()) => break,
-        //     Err(_) => {
-        //         let response = "Input is not recognized as a word, please try again.";
-        //         let bytes_written: usize = buf_client_writer.write(response.as_bytes())?;
-        //         if bytes_written != response.as_bytes().len() {
-        //             println!("Failed to write response at line: {}", line!());
-        //             return Err(Box::new(WriteError)); 
-        //         }
-        //     }
-        // }
-    // }
+    loop {
+        let message: String = protocol::receive_string_from_stream(&stream)?;
+        println!("Received message from client: {message}");
+
+        match word_radix.lookup(&message) {
+            Ok(()) => break,
+            Err(_) => {
+                let response = String::from("Input is not recognized as a word, please try again.");
+                protocol::write_string_to_stream(&stream, &response)?;
+
+            }
+        }
+
+        
+
+    }
 
     // let res = buf_client_writer.into_inner().unwrap().shutdown(net::Shutdown::Both);
     // println!("Shutdown result: {res:?}");

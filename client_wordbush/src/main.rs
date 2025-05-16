@@ -3,25 +3,25 @@ use std::{
     io,
     io::{BufRead, BufWriter, BufReader, Write, Read},
 };
-use protocol::Message;
+use protocol;
 
 fn run_game(server_stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
     // server_stream.write("hej".as_bytes());
 
     // Initialising resources
-    // let mut buf_server_writer = BufWriter::new(&server_stream);
-    // let mut buf_server_reader = BufReader::new(&server_stream);  
     let stdin: io::Stdin = io::stdin();
     let mut input_buffer = String::new();
-    // let mut read_buffer = String::new();
+
+    let server_response = protocol::receive_string_from_stream(&server_stream)?;
+    println!("{server_response}");
 
     // Communication
-    println!("Input a word to start:");
+    // println!("Input a word to start:");
     let _ = stdin.read_line(&mut input_buffer); 
     let _ = input_buffer.pop(); // remove newline
-    Message::send_message(&server_stream, &input_buffer)?;
-    let response = Message::from_stream(&server_stream)?;
-
+    protocol::write_string_to_stream(&server_stream, &input_buffer)?;
+    let server_response = protocol::receive_string_from_stream(&server_stream)?;
+    println!("{server_response}");
     // let message = Message {content: input_buffer.copy()}
 
     // server_stream.write(input_buffer.as_bytes())?;
