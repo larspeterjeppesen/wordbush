@@ -56,19 +56,41 @@ fn run_game_instance(word_radix: &Radix, mut stream: TcpStream) -> Result<(), Bo
     protocol::write_string_to_stream(&stream, &String::from("Welcome to wordbush version 0.1!\nType a word to begin!"))?;
     println!("Waiting for client input");
 
+    let mut used_words: Radix = Radix::new();
+    let mut points: u32 = 0;
+    let mut combo: u32 = 0;
 
+    let mut base_word: String = String::new();
+    let mut base_word_iter: Option<std::str::Chars<'_>> = None;
+    // Todo:
+    // implement 
     loop {
         let message: String = protocol::receive_string_from_stream(&stream)?;
         println!("Received message from client: {message}");
 
-        match word_radix.lookup(&message) {
-            Ok(()) => break,
-            Err(_) => {
-                let response = String::from("Input is not recognized as a word, please try again.");
-                protocol::write_string_to_stream(&stream, &response)?;
-
-            }
+        if let Err(e) = word_radix.lookup(&message) {
+            println!("Got error on radix tree lookup: {e:?}");
+            let response = String::from("Input is not recognized as a word, please try again.");
+            protocol::write_string_to_stream(&stream, &response)?;
+            continue; 
         }
+
+        if let Ok(()) = used_words.lookup(&message) {
+            let response = String::from("Word has already been used, please try again.");
+            protocol::write_string_to_stream(&stream, &response)?;
+            continue;
+        }
+
+        if base_word.len() == 0 {
+            base_word = message.clone();
+        }
+
+
+        let response = format!("Received word \"{}\". {} points awarded.", message, points);
+        protocol::write_string_to_stream(&stream, &response)?;
+
+        used_words.insert(message)?;
+
 
         
 
